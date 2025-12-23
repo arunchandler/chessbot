@@ -1,10 +1,12 @@
-"""Simple human vs. random-bot CLI loop."""
+"""Simple human vs. bot CLI loop (Random or MCTS)."""
 
 from __future__ import annotations
 
+import argparse
 from typing import Callable, Optional
 
 import chess
+import random
 
 from chessbot.chess import game
 from chessbot.interfaces import agent as agent_mod
@@ -54,7 +56,56 @@ def play(
 
 
 def main() -> None:
-    play()
+    parser = argparse.ArgumentParser(description="Play chess vs. a bot.")
+    parser.add_argument(
+        "--bot",
+        choices=["random", "mcts"],
+        default="random",
+        help="Bot type (random legal move or MCTS).",
+    )
+    parser.add_argument(
+        "--color",
+        choices=["white", "black"],
+        default=None,
+        help="Your color. If omitted, a color is chosen at random.",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=300,
+        help="MCTS iterations (only if --bot mcts).",
+    )
+    parser.add_argument(
+        "--cpuct",
+        type=float,
+        default=1.5,
+        help="Exploration constant for MCTS.",
+    )
+    parser.add_argument(
+        "--rollout-depth",
+        type=int,
+        default=20,
+        help="Rollout depth for MCTS default policy.",
+    )
+
+    args = parser.parse_args()
+
+    if args.color is None:
+        human_color = random.choice([chess.WHITE, chess.BLACK])  # type: ignore[name-defined]
+    else:
+        human_color = chess.WHITE if args.color == "white" else chess.BLACK
+
+    if args.bot == "mcts":
+        bot = agent_mod.MCTSAgent(
+            iterations=args.iterations, c=args.cpuct, rollout_depth=args.rollout_depth
+        )
+    else:
+        bot = agent_mod.RandomAgent()
+
+    if human_color == chess.WHITE:
+        play(white_agent=agent_mod.HumanAgent(), black_agent=bot)
+    else:
+        play(white_agent=bot, black_agent=agent_mod.HumanAgent())
 
 
 if __name__ == "__main__":

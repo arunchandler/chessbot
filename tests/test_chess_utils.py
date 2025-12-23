@@ -1,6 +1,8 @@
 import random
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
 
 from chessbot.chess import utils
 

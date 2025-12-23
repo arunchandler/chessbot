@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chessbot"
+version = "0.1.0"
+description = "Chess bot using python-chess + MCTS + Neural Network (PyTorch)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Your Name" }]
+
+dependencies = [
+    # Chess engine / rules / board representation
+    "python-chess>=1.999",
+
+    # Numerics
+    "numpy>=1.26",
+
+    # Neural nets (CPU by default; install CUDA build separately if desired)
+    "torch>=2.2",
+
+    # Training / progress / logging
+    "tqdm>=4.66",
+    "tensorboard>=2.16",
+
+    # CLI / nice output
+    "rich>=13.7",
+    "typer>=0.12",
+
+    # Plotting + analysis (very useful during training)
+    "matplotlib>=3.8",
+    "pandas>=2.2",
+
+    # Serialization / configs
+    "pyyaml>=6.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0",
+    "hypothesis>=6.98",
+
+    # Lint/format/typecheck
+    "ruff>=0.5.0",
+    "black>=24.4",
+    "mypy>=1.10",
+
+    # DX
+    "ipython>=8.22",
+    "pre-commit>=3.7",
+]
+
+# Optional: speedups / quality-of-life
+perf = [
+    "numba>=0.60",      # sometimes helpful for custom encoders / rollout code
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E203", "E266"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_optional = true

@@ -1,0 +1,21 @@
+# Default configuration (edit freely)
+
+mcts:
+  num_sims: 200
+  cpuct: 1.5
+  dirichlet_alpha: 0.3
+  dirichlet_epsilon: 0.25
+
+selfplay:
+  games_per_iteration: 50
+  max_moves: 512
+  temperature_moves: 20
+  temperature: 1.0
+
+train:
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 1.0e-4
+  epochs_per_iteration: 1
+  replay_buffer_size: 200000
+  eval_games: 50

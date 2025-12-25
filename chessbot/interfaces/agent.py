@@ -6,9 +6,13 @@ import random
 from typing import Callable, Optional, Protocol
 
 import chess
+import torch
 
 from chessbot.chess import game
+from chessbot.mcts import evaluator as mcts_evaluator
 from chessbot.mcts import search as mcts_search
+from chessbot.nn.model import ChessNet
+
 
 class QuitGame(Exception):
     """Signal that the user requested to end the game early."""
@@ -89,27 +93,21 @@ class MCTSAgent:
         *,
         iterations: int = 300,
         c: float = 1.5,
-        rollout_depth: int = 20,
-        rollout_fn: Optional[mcts_search.RolloutFn] = None,
-        rng: Optional[random.Random] = None,
+        evaluator: Optional[mcts_evaluator.EvaluatorProtocol] = None,
     ) -> None:
         self.iterations = iterations
         self.c = c
-        self.rollout_depth = rollout_depth
-        self.rollout_fn = rollout_fn
-        self.rng = rng
+        self.evaluator = evaluator
 
     def choose_move(self, board: chess.Board) -> chess.Move:
         if board.is_game_over(claim_draw=True):
             raise ValueError("Cannot choose move: board is terminal.")
 
-        root = mcts_search(
+        root = mcts_search.execute_search(
             board,
             iterations=self.iterations,
             c=self.c,
-            rollout_depth=self.rollout_depth,
-            rollout_fn=self.rollout_fn,
-            rng=self.rng,
+            evaluator=self.evaluator,
         )
 
         if not root.children:
@@ -117,3 +115,36 @@ class MCTSAgent:
 
         best_move, _ = max(root.children.items(), key=lambda item: item[1].visits)
         return best_move
+
+
+class MaterialMCTSAgent(MCTSAgent):
+    """MCTS using material evaluator (no NN)."""
+
+    name = "MaterialMCTS"
+
+    def __init__(self, *, iterations: int = 300, c: float = 1.5) -> None:
+        super().__init__(iterations=iterations, c=c, evaluator=mcts_evaluator.MaterialEvaluator())
+
+
+class NeuralMCTSAgent(MCTSAgent):
+    """MCTS using a neural network evaluator loaded from a checkpoint."""
+
+    name = "NeuralMCTS"
+
+    def __init__(
+        self,
+        *,
+        model_path: str,
+        iterations: int = 300,
+        c: float = 1.5,
+        device: str = "cpu",
+    ) -> None:
+        model = ChessNet()
+        state = torch.load(model_path, map_location=device)
+        if isinstance(state, dict) and "model_state" in state:
+            state = state["model_state"]
+        elif isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+        model.load_state_dict(state)
+        evaluator = mcts_evaluator.NeuralNetEvaluator(model, device=device)
+        super().__init__(iterations=iterations, c=c, evaluator=evaluator)

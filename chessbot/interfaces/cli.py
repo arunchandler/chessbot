@@ -60,7 +60,7 @@ def main() -> None:
     parser.add_argument(
         "--bot",
         choices=["random", "mcts"],
-        default="random",
+        default="mcts",
         help="Bot type (random legal move or MCTS).",
     )
     parser.add_argument(
@@ -82,10 +82,16 @@ def main() -> None:
         help="Exploration constant for MCTS.",
     )
     parser.add_argument(
-        "--rollout-depth",
-        type=int,
-        default=20,
-        help="Rollout depth for MCTS default policy.",
+        "--model-path",
+        type=str,
+        default=None,
+        help="Optional path to a torch checkpoint for the MCTS neural evaluator.",
+    )
+    parser.add_argument(
+        "--model-device",
+        type=str,
+        default="cpu",
+        help="Device for the neural evaluator (e.g., cpu, cuda).",
     )
 
     args = parser.parse_args()
@@ -96,9 +102,15 @@ def main() -> None:
         human_color = chess.WHITE if args.color == "white" else chess.BLACK
 
     if args.bot == "mcts":
-        bot = agent_mod.MCTSAgent(
-            iterations=args.iterations, c=args.cpuct, rollout_depth=args.rollout_depth
-        )
+        if args.model_path is not None:
+            bot = agent_mod.NeuralMCTSAgent(
+                model_path=args.model_path,
+                device=args.model_device,
+                iterations=args.iterations,
+                c=args.cpuct,
+            )
+        else:
+            bot = agent_mod.MaterialMCTSAgent(iterations=args.iterations, c=args.cpuct)
     else:
         bot = agent_mod.RandomAgent()
 

@@ -1,6 +1,13 @@
 from .node import Node
-from .search import default_rollout, run_search, search, tree_policy
+from .search import run_search, execute_search, tree_policy
+from .evaluator import EvaluatorProtocol, MaterialEvaluator, NeuralNetEvaluator
 
-__all__ = ["Node", "run_search", "default_rollout", "tree_policy", "search"]
-
-__all__ = ["Node"]
+__all__ = [
+    "Node",
+    "run_search",
+    "execute_search",
+    "tree_policy",
+    "EvaluatorProtocol",
+    "MaterialEvaluator",
+    "NeuralNetEvaluator",
+]

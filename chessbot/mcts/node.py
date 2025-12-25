@@ -23,6 +23,7 @@ class Node:
     root_player: Optional[chess.Color] = None
     children: Dict[chess.Move, "Node"] = field(default_factory=dict)
     untried_moves: list[chess.Move] = field(default_factory=list)
+    priors: Dict[chess.Move, float] = field(default_factory=dict)  # P(a) from parent
     visits: int = 0
     value_sum: float = 0.0  # accumulated value from root player's perspective
 

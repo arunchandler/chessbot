@@ -3,6 +3,7 @@ import pytest
 chess = pytest.importorskip("chess")
 
 from chessbot.interfaces.agent import MCTSAgent
+from chessbot.interfaces.agent import MaterialMCTSAgent
 from chessbot.mcts import evaluator as mcts_evaluator
 from chessbot.chess import utils
 
@@ -46,8 +47,9 @@ def test_agent_raises_on_terminal_board() -> None:
 
 
 def test_mate_in_one_is_found() -> None:
-    board = chess.Board("rnbqkb1r/pppp1ppp/5n2/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3")
-    target = chess.Move.from_uci("d1h5")
+    # Simple mate in one: Qh7#
+    board = chess.Board("7k/8/8/7Q/8/8/8/7K w - - 0 1")
+    target = chess.Move.from_uci("h5h7")
     agent = MCTSAgent(iterations=200, evaluator=DummyEvaluator(target_move=target))
     move = agent.choose_move(board)
     assert move == target

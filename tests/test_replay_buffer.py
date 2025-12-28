@@ -25,6 +25,7 @@ def test_replay_buffer_save_load(tmp_path) -> None:
     a, b = loaded.sample(2)
     assert torch.equal(a[0], torch.ones(1))
     assert torch.equal(b[1], torch.ones(1))
+    # sampling should be random, but all entries are identical so equality holds
 
 
 def test_dataset_and_dataloader() -> None:

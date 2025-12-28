@@ -17,7 +17,6 @@ from chessbot.chess import utils
 
 @dataclass
 class Node:
-    board: chess.Board
     parent: Optional["Node"] = None
     move: Optional[chess.Move] = None  # move used to reach this node from its parent
     root_player: Optional[chess.Color] = None
@@ -26,46 +25,12 @@ class Node:
     priors: Dict[chess.Move, float] = field(default_factory=dict)  # P(a) from parent
     visits: int = 0
     value_sum: float = 0.0  # accumulated value from root player's perspective
-
-    def __post_init__(self) -> None:
-        if self.root_player is None:
-            self.root_player = self.board.turn
-        if not self.untried_moves:
-            self.untried_moves = utils.legal_moves(self.board)
-
-    @property
-    def is_terminal(self) -> bool:
-        return utils.is_terminal(self.board)
+    is_terminal: bool = False
 
     @property
     def q_value(self) -> float:
         """Mean value (root perspective)."""
         return self.value_sum / self.visits if self.visits else 0.0
-
-    def expand(self, move: chess.Move) -> "Node":
-        """
-        Create a child node by applying `move` to a copied board.
-
-        Removes the move from `untried_moves` if present.
-        """
-        if move not in self.board.legal_moves:
-            raise ValueError(f"Illegal expansion move: {move}")
-
-        child_board = self.board.copy(stack=True)
-        child_board.push(move)
-
-        child = Node(
-            board=child_board,
-            parent=self,
-            move=move,
-            root_player=self.root_player,
-        )
-        self.children[move] = child
-
-        if move in self.untried_moves:
-            self.untried_moves.remove(move)
-
-        return child
 
     def record(self, value_from_root: float) -> None:
         """
@@ -76,3 +41,21 @@ class Node:
         """
         self.visits += 1
         self.value_sum += value_from_root
+
+    @classmethod
+    def from_board(
+        cls,
+        board: chess.Board,
+        *,
+        parent: Optional["Node"] = None,
+        move: Optional[chess.Move] = None,
+        root_player: Optional[chess.Color] = None,
+    ) -> "Node":
+        node = cls(
+            parent=parent,
+            move=move,
+            root_player=root_player if root_player is not None else board.turn,
+        )
+        node.untried_moves = utils.legal_moves(board)
+        node.is_terminal = utils.is_terminal(board)
+        return node

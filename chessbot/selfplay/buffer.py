@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pickle
+import random
 from collections import deque
 from typing import Deque, Iterable, List, Tuple
 
@@ -26,8 +27,7 @@ class ReplayBuffer:
     def sample(self, n: int) -> List[Example]:
         if n > len(self.buffer):
             raise ValueError("Not enough samples in buffer.")
-        # deterministic slice from the end for simplicity; can switch to random.sample
-        return list(list(self.buffer)[-n:])
+        return random.sample(list(self.buffer), n)
 
     def save(self, path: str) -> None:
         with open(path, "wb") as f:

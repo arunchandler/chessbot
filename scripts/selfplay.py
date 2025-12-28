@@ -10,6 +10,7 @@ import torch
 
 from chessbot.nn.model import ChessNet
 from chessbot.selfplay.generate import generate_self_play_game
+from chessbot.selfplay.buffer import ReplayBuffer
 
 
 def main() -> None:
@@ -30,6 +31,12 @@ def main() -> None:
         help="Number of initial plies to sample; afterwards use argmax.",
     )
     parser.add_argument(
+        "--temperature-final",
+        type=float,
+        default=0.0,
+        help="Temperature after --temperature-moves plies (0.0 = argmax).",
+    )
+    parser.add_argument(
         "--model-path",
         type=str,
         default=None,
@@ -46,6 +53,30 @@ def main() -> None:
         type=str,
         default=None,
         help="Optional path to save a torch file of collected examples.",
+    )
+    parser.add_argument(
+        "--dirichlet-alpha",
+        type=float,
+        default=0.3,
+        help="Dirichlet concentration parameter for root exploration noise.",
+    )
+    parser.add_argument(
+        "--dirichlet-frac",
+        type=float,
+        default=0.25,
+        help="Fraction of root prior replaced by Dirichlet noise (aka epsilon).",
+    )
+    parser.add_argument(
+        "--buffer-path",
+        type=str,
+        default=None,
+        help="Optional path to maintain a replay buffer (appends new examples and saves).",
+    )
+    parser.add_argument(
+        "--buffer-capacity",
+        type=int,
+        default=200_000,
+        help="Capacity for a new replay buffer if --buffer-path does not exist.",
     )
     args = parser.parse_args()
 
@@ -67,7 +98,10 @@ def main() -> None:
             iterations=args.iterations,
             c=args.cpuct,
             temperature=args.temperature,
+            temperature_final=args.temperature_final,
             temperature_moves=args.temperature_moves,
+            dirichlet_alpha=args.dirichlet_alpha,
+            dirichlet_frac=args.dirichlet_frac,
         )
         all_examples.extend(examples)
         print(f"Game {i+1}/{args.games} complete: {len(examples)} positions.")
@@ -79,6 +113,20 @@ def main() -> None:
         print(f"Saved {len(all_examples)} examples to {out_path}")
     else:
         print(f"Generated {len(all_examples)} examples (not saved).")
+
+    if args.buffer_path:
+        buf_path = Path(args.buffer_path)
+        if buf_path.exists():
+            buffer = ReplayBuffer.load(buf_path)
+            print(f"Loaded replay buffer from {buf_path} (size={len(buffer)}, capacity={buffer.capacity})")
+        else:
+            buffer = ReplayBuffer(capacity=args.buffer_capacity)
+            buf_path.parent.mkdir(parents=True, exist_ok=True)
+            print(f"Created new replay buffer at {buf_path} (capacity={buffer.capacity})")
+
+        buffer.add(all_examples)
+        buffer.save(buf_path)
+        print(f"Buffer now has {len(buffer)} examples (saved to {buf_path})")
 
 
 if __name__ == "__main__":

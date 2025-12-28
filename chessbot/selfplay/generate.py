@@ -46,7 +46,10 @@ def generate_self_play_game(
     iterations: int = 400,
     c: float = 1.5,
     temperature: float = 1.0,
+    temperature_final: float = 0.0,
     temperature_moves: int = 20,
+    dirichlet_alpha: float = 0.3,
+    dirichlet_frac: float = 0.25,
 ) -> List[Example]:
     """
     Play a self-play game using MCTS and return training examples.
@@ -55,6 +58,12 @@ def generate_self_play_game(
     - x: encoded board planes [C,8,8]
     - pi: policy target over ACTION_DIM
     - z: outcome from the perspective of the player to move at that position
+
+    Exploration:
+    - Root priors are mixed with Dirichlet noise (dirichlet_alpha, dirichlet_frac)
+      to keep openings diverse.
+    - Temperature decays from `temperature` to `temperature_final` after
+      `temperature_moves` plies to move from sampling to argmax.
     """
     board = chess.Board()
     if model is not None:
@@ -66,14 +75,22 @@ def generate_self_play_game(
 
     move_idx = 0
     while not board.is_game_over(claim_draw=True):
-        root = mcts_search.execute_search(board, iterations=iterations, c=c, evaluator=evaluator)
+        root = mcts_search.execute_search(
+            board,
+            iterations=iterations,
+            c=c,
+            evaluator=evaluator,
+            root_dirichlet_alpha=dirichlet_alpha,
+            root_dirichlet_frac=dirichlet_frac,
+        )
 
         visits = {move: child.visits for move, child in root.children.items()}
         if not visits:
             break
 
+        current_temp = temperature if move_idx < temperature_moves else temperature_final
         pi, moves, move_probs = _policy_from_visits(
-            visits, temperature if move_idx < temperature_moves else 0.0
+            visits, current_temp
         )
 
         x = encode.encode_board(board)
@@ -81,7 +98,7 @@ def generate_self_play_game(
         examples.append((x, pi, to_move))
 
         # Choose move: sample early, argmax later.
-        if move_idx < temperature_moves and temperature > 0:
+        if current_temp > 0:
             move_idx_sample = torch.multinomial(move_probs, 1).item()
             move = moves[move_idx_sample]
         else:

@@ -10,6 +10,7 @@ import torch
 from chessbot.nn.model import ChessNet
 from chessbot.nn.optim import make_optimizer, make_scheduler
 from chessbot.selfplay.dataset import make_dataloader
+from chessbot.selfplay.buffer import ReplayBuffer
 from chessbot.train import train as train_mod
 from chessbot.train import checkpoints
 from chessbot.train import logging as log
@@ -17,7 +18,19 @@ from chessbot.train import logging as log
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train chessbot policy/value network.")
-    p.add_argument("--data", type=str, required=True, help="Path to torch-saved examples (list of (x, pi, z)).")
+    p.add_argument("--data", type=str, default=None, help="Path to torch-saved examples (list of (x, pi, z)).")
+    p.add_argument(
+        "--buffer",
+        type=str,
+        default=None,
+        help="Path to a replay buffer pickle produced by selfplay (--buffer-path).",
+    )
+    p.add_argument(
+        "--buffer-samples",
+        type=int,
+        default=0,
+        help="Number of examples to draw at random from the buffer (0 = use all).",
+    )
     p.add_argument("--epochs", type=int, default=1, help="Training epochs.")
     p.add_argument("--batch-size", type=int, default=64, help="Batch size.")
     p.add_argument("--lr", type=float, default=1e-3, help="Learning rate.")
@@ -31,7 +44,21 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    examples = torch.load(args.data, map_location="cpu")
+    if args.buffer:
+        buffer = ReplayBuffer.load(args.buffer)
+        if len(buffer) == 0:
+            raise ValueError(f"Replay buffer {args.buffer} is empty.")
+        n = len(buffer) if args.buffer_samples <= 0 else min(len(buffer), args.buffer_samples)
+        examples = buffer.sample(n)
+        print(f"Loaded replay buffer {args.buffer} with {len(buffer)} examples; sampled {n} for training.")
+        if args.data:
+            print(f"[info] Ignoring --data {args.data} because --buffer was provided.")
+    elif args.data:
+        examples = torch.load(args.data, map_location="cpu")
+        print(f"Loaded {len(examples)} examples from {args.data}.")
+    else:
+        raise ValueError("Provide either --data or --buffer.")
+
     dl = make_dataloader(examples, batch_size=args.batch_size, shuffle=True, pin_memory=(args.device != "cpu"))
 
     model = ChessNet()
